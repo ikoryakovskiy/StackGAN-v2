@@ -125,8 +125,9 @@ if __name__ == "__main__":
         from datasets import TextDataset
         dataset = TextDataset(cfg.DATA_DIR, split_dir,
                               base_size=cfg.TREE.BASE_SIZE,
-                              transform=image_transform)
+                              transform=image_transform, limit=cfg.TRAIN.LIMIT)
     assert dataset
+    print("Num workers {}".format(int(cfg.WORKERS)))
     num_gpu = len(cfg.GPU_ID.split(','))
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=cfg.TRAIN.BATCH_SIZE * num_gpu,

@@ -182,7 +182,7 @@ class LSUNClass(data.Dataset):
 
 class TextDataset(data.Dataset):
     def __init__(self, data_dir, split='train', embedding_type='cnn-rnn',
-                 base_size=64, transform=None, target_transform=None):
+                 base_size=64, transform=None, target_transform=None, limit=None):
         self.transform = transform
         self.norm = transforms.Compose([
             transforms.ToTensor(),
@@ -200,11 +200,12 @@ class TextDataset(data.Dataset):
             self.bbox = self.load_bbox()
         else:
             self.bbox = None
+
         split_dir = os.path.join(data_dir, split)
 
-        self.filenames = self.load_filenames(split_dir)
-        self.embeddings = self.load_embedding(split_dir, embedding_type)
-        self.class_id = self.load_class_id(split_dir, len(self.filenames))
+        self.filenames = self.load_filenames(split_dir, limit)
+        self.embeddings = self.load_embedding(split_dir, embedding_type, limit)
+        self.class_id = self.load_class_id(split_dir, len(self.filenames), limit)
         self.captions = self.load_all_captions()
 
         if cfg.TRAIN.FLAG:
@@ -247,12 +248,12 @@ class TextDataset(data.Dataset):
 
         caption_dict = {}
         for key in self.filenames:
-            caption_name = '%s/text/%s.txt' % (self.data_dir, key)
+            caption_name = '%s/text_c10/%s.txt' % (self.data_dir, key)
             captions = load_captions(caption_name)
             caption_dict[key] = captions
         return caption_dict
 
-    def load_embedding(self, data_dir, embedding_type):
+    def load_embedding(self, data_dir, embedding_type, limit):
         if embedding_type == 'cnn-rnn':
             embedding_filename = '/char-CNN-RNN-embeddings.pickle'
         elif embedding_type == 'cnn-gru':
@@ -264,21 +265,24 @@ class TextDataset(data.Dataset):
             embeddings = pickle.load(f)
             embeddings = np.array(embeddings)
             # embedding_shape = [embeddings.shape[-1]]
+            embeddings = embeddings[:limit]
             print('embeddings: ', embeddings.shape)
         return embeddings
 
-    def load_class_id(self, data_dir, total_num):
+    def load_class_id(self, data_dir, total_num, limit):
         if os.path.isfile(data_dir + '/class_info.pickle'):
             with open(data_dir + '/class_info.pickle', 'rb') as f:
                 class_id = pickle.load(f)
         else:
             class_id = np.arange(total_num)
+        class_id = class_id[:limit]
         return class_id
 
-    def load_filenames(self, data_dir):
+    def load_filenames(self, data_dir, limit):
         filepath = os.path.join(data_dir, 'filenames.pickle')
         with open(filepath, 'rb') as f:
             filenames = pickle.load(f)
+        filenames = filenames[:limit]
         print('Load filenames from: %s (%d)' % (filepath, len(filenames)))
         return filenames
 

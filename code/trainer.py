@@ -240,7 +240,7 @@ class GANTrainer(object):
         s_gpus = cfg.GPU_ID.split(',')
         self.gpus = [int(ix) for ix in s_gpus]
         self.num_gpus = len(self.gpus)
-        torch.cuda.set_device(self.gpus[0])
+        #torch.cuda.set_device(self.gpus[0])
         cudnn.benchmark = True
 
         self.batch_size = cfg.TRAIN.BATCH_SIZE * self.num_gpus
@@ -534,7 +534,7 @@ class condGANTrainer(object):
         s_gpus = cfg.GPU_ID.split(',')
         self.gpus = [int(ix) for ix in s_gpus]
         self.num_gpus = len(self.gpus)
-        torch.cuda.set_device(self.gpus[0])
+        #torch.cuda.set_device(self.gpus[0])
         cudnn.benchmark = True
 
         self.batch_size = cfg.TRAIN.BATCH_SIZE * self.num_gpus
@@ -696,19 +696,24 @@ class condGANTrainer(object):
         predictions = []
         count = start_count
         start_epoch = start_count // (self.num_batches)
+        summary_period = 20
         for epoch in range(start_epoch, self.max_epoch):
             start_t = time.time()
 
             for step, data in enumerate(self.data_loader, 0):
+                print("Step {}".format(step))
+
                 #######################################################
                 # (0) Prepare training data
                 ######################################################
+                print("Prepare training data")
                 self.imgs_tcpu, self.real_imgs, self.wrong_imgs, \
                     self.txt_embedding = self.prepare_data(data)
 
                 #######################################################
                 # (1) Generate fake images
                 ######################################################
+                print("Generate fake images")
                 noise.data.normal_(0, 1)
                 self.fake_imgs, self.mu, self.logvar = \
                     self.netG(noise, self.txt_embedding)
@@ -716,6 +721,7 @@ class condGANTrainer(object):
                 #######################################################
                 # (2) Update D network
                 ######################################################
+                print("Update D network")
                 errD_total = 0
                 for i in range(self.num_Ds):
                     errD = self.train_Dnet(i, count)
@@ -724,15 +730,17 @@ class condGANTrainer(object):
                 #######################################################
                 # (3) Update G network: maximize log(D(G(z)))
                 ######################################################
+                print("Update G network")
                 kl_loss, errG_total = self.train_Gnet(count)
                 for p, avg_p in zip(self.netG.parameters(), avg_param_G):
                     avg_p.mul_(0.999).add_(0.001, p.data)
 
                 # for inception score
+                print("Inception score")
                 pred = self.inception_model(self.fake_imgs[-1].detach())
                 predictions.append(pred.data.cpu().numpy())
 
-                if count % 100 == 0:
+                if count % summary_period == 0:
                     summary_D = summary.scalar('D_loss', errD_total.data[0])
                     summary_G = summary.scalar('G_loss', errG_total.data[0])
                     summary_KL = summary.scalar('KL_loss', kl_loss.data[0])
@@ -779,6 +787,14 @@ class condGANTrainer(object):
                      kl_loss.data[0], end_t - start_t))
 
         save_model(self.netG, avg_param_G, self.netsD, count, self.model_dir)
+        #
+        load_params(self.netG, avg_param_G)
+        #
+        self.fake_imgs, _, _ = \
+            self.netG(fixed_noise, self.txt_embedding)
+        save_img_results(self.imgs_tcpu, self.fake_imgs, self.num_Ds,
+                         count, self.image_dir, self.summary_writer)
+        #
         self.summary_writer.close()
 
     def save_superimages(self, images_list, filenames,
@@ -824,7 +840,7 @@ class condGANTrainer(object):
 
     def evaluate(self, split_dir):
         if cfg.TRAIN.NET_G == '':
-            print('Error: the path for morels is not found!')
+            print('Error: the path for models is not found!')
         else:
             # Build and load the generator
             if split_dir == 'test':
