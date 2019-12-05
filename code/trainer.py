@@ -240,7 +240,7 @@ class GANTrainer(object):
         s_gpus = cfg.GPU_ID.split(',')
         self.gpus = [int(ix) for ix in s_gpus]
         self.num_gpus = len(self.gpus)
-        #torch.cuda.set_device(self.gpus[0])
+        torch.cuda.set_device(self.gpus[0])
         cudnn.benchmark = True
 
         self.batch_size = cfg.TRAIN.BATCH_SIZE * self.num_gpus
@@ -534,7 +534,7 @@ class condGANTrainer(object):
         s_gpus = cfg.GPU_ID.split(',')
         self.gpus = [int(ix) for ix in s_gpus]
         self.num_gpus = len(self.gpus)
-        #torch.cuda.set_device(self.gpus[0])
+        torch.cuda.set_device(self.gpus[0])
         cudnn.benchmark = True
 
         self.batch_size = cfg.TRAIN.BATCH_SIZE * self.num_gpus
